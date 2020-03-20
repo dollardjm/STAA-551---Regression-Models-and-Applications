@@ -1,0 +1,278 @@
+---
+title: "STAA 551 Assignment 3, Spring 2020"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, echo=TRUE, warning=FALSE, message=FALSE}
+```
+```{r}
+#Install Tidyverse for ggplot2 capability
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+library(tidyverse)
+```
+
+#### Name: Jon Dollard
+####
+
+1.  A study was conducted involving 97 men with prostate cancer who were due to receive a radical prostatectomy.  The purpose of this study was to predict the logarithm of the prostate specific antigen (`lpsa`).  Eight predictor variables were considered for the study, but for this problem, we will only use `lcavol`,`lweight`, `age`, `lbph`, and `lcp`.  This data set (`prostate`) is contained in the `faraway` package, where descriptions of these variables are given.      
+
+```{r}
+library(faraway)
+attach(prostate)
+head(prostate)
+```
+
+
+    (a)  Obtain a matrix of scatter plots for all of the variables mentioned above.  Based on this graph, which predictors would you expect to be helpful in explaining the variability in the response (`lpsa`)?  Justify your answer. 
+
+```{r}
+#Create a data frame of relevant variables
+prostate_df = data.frame(prostate$lpsa, prostate$lcavol, prostate$lweight, prostate$age, prostate$lbph, prostate$lcp)
+#Plot the pairs of variables in scatterplot format
+pairs(prostate_df)
+```
+
+    (b)  Use R to fit a linear model for `lpsa`, using all five of the predictor variables.  State the model for this regression and the fitted regression equation.
+
+```{r}
+#Use lm function to fit a linear model to all five predictors
+prostate_full_lm = lm(prostate_df)
+summary(prostate_full_lm)
+```
+
+    (c)  Compute the hat matrix for the model in (b) using R.  Print the first 5 rows and 5 columns of the hat matrix.  Confirm that the hat matrix is of the correct dimensions. 
+
+```{r}
+#Get the design matrix from the lm
+prostate_dm = model.matrix(prostate_full_lm)
+#prostate_dm
+#Calculate the hat matrix
+hat_matrix = prostate_dm%*%solve(t(prostate_dm)%*%prostate_dm)%*%t(prostate_dm)
+#Display the first 5 rows and colums of the hat matrix
+hat_matrix[1:5,1:5]
+#Determine the number of values in the response
+length(prostate$lpsa)
+#Determine the dimensions of the hat matrix.  It should have dimension n x n if correct.
+dim(hat_matrix)
+```
+
+    (d)  Use R to confirm the properties of the hat matrix (symmetric, idempotent, rows sum to 1, diagonal elements sum to p) for this study. You only need to print out 5 rows and 10-15 columns of appropriate calculations for this.
+
+```{r}
+#Verify the Hat Matrix is symmetric
+all(round(hat_matrix, digits = 6) == round(t(hat_matrix), digits = 6))
+
+#Verify the Hat Matrix is idempotent
+all(round(hat_matrix, digits = 6) == round(hat_matrix %*% hat_matrix, digits = 6))
+
+#Verify the Hat Matrix rows sum to 1
+hat_matrix_row_sum = matrix(rowSums(hat_matrix))
+hat_matrix_row_sum
+
+#Verify the Hat Matrix diagonal elements sum to p
+sum(diag(hat_matrix))
+
+```
+
+    (e)  Use the hat matrix found in (c) to compute the fitted Y-values.  Compute the correlation between the Y-values and the fitted Y-values, and confirm that the square of the correlation coefficient is the same as the Multiple R-squared on the summary. 
+
+```{r}
+#Compute the fitted y values matrix
+y_hat_matrix = hat_matrix %*% matrix(prostate$lpsa)
+#y_hat_matrix
+
+#Compute the correlation
+correlation = cor(y_hat_matrix, matrix(prostate$lpsa))
+correlation
+
+#Compare correlation coefficient to multiple R-squared
+correlation_sq = correlation^2
+round(correlation_sq, digits = 4)
+
+summary(prostate_full_lm)
+```
+
+    (f)   Use the hat matrix again to compute the sample residuals, then compute the residual standard error from those sample residuals.  Check to see that it matches the residual standard error on the summary.  Note, there may be a small amount of rounding error, which we will address later.
+    
+```{r}
+#Compute the sample residuals
+resids = matrix(prostate$lpsa) - (hat_matrix %*% matrix(prostate$lpsa))
+#resids
+#matrix(prostate$lpsa) - y_hat_matrix
+
+#Compute the standard error of the residuals
+sd(resids)
+
+```
+
+2.  Use the fitted model from Problem 1 to complete the following:  
+
+
+    (a)  Complete the general test for the whole model (all predictors).  Give each of the following: (1) both hypotheses, (2) the ANOVA table, converted to the simplest version for conducting this test (i.e. containing only rows for sources of variation: regression, residual and total corrected), (3) the value of the test statistic, (4) the p-value, (5) conclusions based on the p-value.
+
+1)    
+Ho: Beta1 = Beta2 = Beta3 = Beta4 = Beta5 = 0
+Ha: At least one of the Betas != 0
+
+2)
+```{r}
+anova(prostate_full_lm)
+```
+3)
+```{r}
+summary(prostate_full_lm)
+```
+
+    (b)  Consider simplifying this model by eliminating `age` as a predictor.  Call this model 2b.  We wish to compare model 2b to the model in (a).  That is, we wish to test whether removing the predictor `age` from the full model significantly reduces the explained variation.  You can do this based on the summary of the `lm` object from part (a).  Give each of the following: (1) the full and reduced models, (2) both hypotheses, (3) the value of the test statistic, (4) the p-value, (5) conclusions based on the p-value.
+    
+```{r}
+summary(prostate_full_lm)
+```
+    
+    (c)  Now consider greatly simplifying the model by eliminating `age`, `lbph`, and `lcp` as predictors.  Call this model 2c.  We wish to compare model 2c to the model in (a).  You can do this based on the ANOVA table for the model in (a), provided the predictors were entered in an appropriate order.  Give each of the following: (1) the full and reduced models, (2) both hypotheses, (3) the appropriate sums of squares and degrees of freedom, (4) the value of the F statistic, (5) the p-value, (6) conclusions based on the p-value. 
+
+```{r}
+anova(prostate_full_lm)
+```
+```{r}
+pf(1.391,3,91,lower.tail=FALSE)
+```
+
+3.  Consider the smallest model from Problem 2 (the model containing only `lcavol` and `lweight`).
+
+```{r}
+#Create the smallest model from problem 2
+prostate_small_df = data.frame(prostate$lpsa, prostate$lcavol, prostate$lweight)
+#prostate_small_df
+#Use lm function to fit a linear model to lcavol and lweight predictors
+prostate_small_lm = lm(prostate_small_df)
+summary(prostate_small_lm)
+```
+
+    (a) Using the `hatvalues` function on the `lm` object, compute the leverage values and store them in a vector.  Then compute the mean of the leverage values and show that it is equal to p/n.  
+
+```{r}
+#Compute the leverage values
+leverages = hatvalues(prostate_small_lm)
+#leverages
+
+#Compute mean of the leverages and show it is equal to p/n
+mean_lev = mean(leverages)
+mean_lev
+p_div_n = 3/length(prostate$lpsa)
+p_div_n
+```
+
+    (b) Determine the observation numbers for which leverage is greater than 2p/n. These are leverage points.  What does a large leverage point indicate about an observation? 
+
+```{r}
+#Calculate the leverage point comparison threshold
+max_lev <- 2*(3/length(prostate$lpsa))
+max_lev
+#Determine the observations with leverage points greater than 2p/n
+leverages[leverages > max_lev]
+```
+
+#####Comment on large leverage points#######
+
+    (c)  Examine the externally studentized residuals to see if any large residuals correspond to leverage points.  Based on this, are any of the points in (b) bad leverage points?  
+
+```{r}
+#Calculate externally studentized residuals 
+ex_stu_res = rstudent(prostate_small_lm)
+#Plot the studentized residuals against a predictor
+ggplot(data = prostate_small_df) + 
+  geom_point(mapping = aes(x = prostate$lcavol, y = ex_stu_res)) +
+  geom_hline(yintercept=2, linetype="dashed", color = "red") +
+  geom_hline(yintercept=-2, linetype="dashed", color = "red") +
+  labs(
+    title = "Standardized Residuals vs. lcavol",
+    x = "lcavol",
+    y = "Standardized Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(x = prostate$lcavol, y = ex_stu_res, label=(prostate$lcavol)))
+```
+
+```{r}
+prostate$lcavol
+```
+
+Observations 5, 18 95, 96, 97 have large residuals
+Only observation 97 has both a large residual and leverage and therefore a leverage point.
+
+```{r}
+ggplot(data = prostate_small_df) + 
+  geom_point(mapping = aes(x = prostate$lweight, y = ex_stu_res)) +
+  geom_hline(yintercept=2, linetype="dashed", color = "red") +
+  geom_hline(yintercept=-2, linetype="dashed", color = "red") +
+  labs(
+    title = "Standardized Residuals vs. lweight",
+    x = "lweight",
+    y = "Standardized Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(x = prostate$lcavol, y = ex_stu_res, label=prostate$lweight))
+```
+
+```{r}
+prostate$lweight
+```
+
+    (d)  Compute and graph the Cook’s distances for this model, as we did in class.  Do any of the leverage points also have large Cook’s distances?  (Use your best judgement for a cutoff value!).
+
+```{r}
+#Cooks distance function is is the car library
+library(car)
+#Calculate cooks distance
+cooks_d = cooks.distance(prostate_small_lm)
+#cooks_d
+#Plot the cooks distance against the observation number
+ggplot(data = prostate_small_df) + 
+  geom_point(mapping = aes(x = 1:97, y = cooks_d)) +
+  labs(
+    title = "Cooks Distance vs. Observation Number",
+    x = "Observation Number",
+    y = "Cooks Distance"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(x = 1:97, y = cooks_d, label=1:97))
+
+```
+
+```{r}
+prostate$lcavol
+```
+
+Observation 32 appears to have a large cooks distance
+
+    (e)  Compute the DFBETAS and use those to identify influential observations. Consider this a "large" data set for this purpose. 
+
+```{r}
+#Calculate DFBETAS
+df_betas = dfbeta(prostate_small_lm)
+
+#Calculate DFBETA threshold
+df_beta_max = 2/(sqrt(length(prostate$lpsa)))
+#df_beta_max
+
+#Create vectors to compare each parameter
+dfbeta_int = dfbeta(prostate_small_lm)[,1]
+dfbeta_lcavol = dfbeta(prostate_small_lm)[,2]
+dfbeta_lweight = dfbeta(prostate_small_lm)[,3]
+
+#Identify the influential cases on the intercept
+dfbeta_int[abs(dfbeta_int) > df_beta_max]
+
+#Identify the influential cases on lcavol
+dfbeta_lcavol[abs(dfbeta_lcavol) > df_beta_max]
+
+#Identify the influential cases on lweight
+dfbeta_lweight[abs(dfbeta_lweight) > df_beta_max]
+
+```
+
+    (f)  Based on your answers to (a)-(e), are there any observations that you think warrant additional consideration?  Justify your answer.  
+

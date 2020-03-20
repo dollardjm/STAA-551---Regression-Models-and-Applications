@@ -1,0 +1,409 @@
+---
+title: "STAA 551 - HW 2"
+author: "Jon Dollard"
+date: "2/9/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE, echo=TRUE, warning=FALSE, message=FALSE}
+```
+```{r}
+#Install Tidyverse for ggplot2 capability
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+library(tidyverse)
+```
+
+1. Percentage of body fat in humans is considered a measure of fitness and is defined to be the total mass of fat divided by a person’s total mass. Measuring body fat is very difficult. A person with a greater muscle mass or larger bones will weigh more than someone of the same size with smaller bones or a lower percentage of muscle, so weight is generally not a good indicator of percent body fat. A highly reliable method of estimating body fat, due to J. Brozek, uses a density measurement; however, measuring the abdomen circumference would be a great deal easier. We would like to determine whether abdomen circumference is useful for estimating Brozek’s body fat calculation. The fat data set in the faraway
+package in R includes measurements on 252 men, including brozek, percent body fat using Brozek’s
+equation, and abdom, abdomen circumference (in centimeters). For each of the following, include axis
+labels and an appropriate title on all of your plots. 
+
+```{r}
+library(faraway)
+attach(fat)
+head(fat)
+```
+
+a. Construct a scatter plot of brozek versus abdom. Comment on the nature of the relationship
+between these variables.
+
+```{r}
+#Create a data frame called fat_data that includes abdom and brozek
+fat_df = select(fat, abdom, brozek)
+
+#Make a scatterplot of brozek versus abdom using ggplot2
+ggplot(data = fat_df) + 
+  geom_point(mapping = aes(x = abdom, y = brozek)) +
+  #geom_smooth(mapping = aes(x = abdom, y = brozek),method=lm) +
+  labs(
+    title = "Abdomen Circumference vs. % Body Fat",
+    x = "Abdomen Circumference, cm",
+    y = "% Body Fat Using Brozeks Equation"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+There appears to be a linear relationship between abdomen circumference and % body fat calculated using
+Brozek's equation.  There also appears to be at least 1 outlier at approximately (148,34).
+
+b. Using a straight line model, compute a fitted equation, run a summary on your lm object, and use
+the confint function to get 99% confidence limits for the parameters 𝛽0 and 𝛽1. Would you
+consider abdom to be worthwhile for estimating Brozek’s body fat measurement? Justify your
+response.
+
+```{r}
+#Use lm to compute the fitted equation
+lm(fat$brozek ~ fat$abdom)
+```
+
+$$ \hat{Y} = -35.1966 + 0.5849X $$
+
+```{r}
+X= c(80,90)
+Y = -35.1966 + .5849*X
+Y
+
+```
+
+
+```{r}
+
+#Get a summary of of the regression for the lm object lm_fat
+lm_fat = lm(fat$brozek ~ fat$abdom)
+summary(lm_fat)
+
+#Use confint to determine at confidence interval at the 99% level
+confint(lm_fat, level = 0.99)
+
+```
+
+I would consider abdom to be worthwile for estimating Brozek's body fat measurement based on this 
+confidence interval.  The confidence interval for Beta-1 does not contain zero.  Therefore, we can
+conclude that a linear relationship does exist between abdom and Brozek's body fat measurement
+
+c. Use a normal QQ plot to check for normally distributed errors. What impression do you have
+regarding normality of errors, based on the plot? Give some justification.
+
+```{r}
+#Use qqnorm to generate a quantile-quantile plot of the residuals.
+qqnorm(lm_fat$residuals, main="QQ Plot % Body Fat Using Brozeks Equation Residuals")
+```
+
+With the exception of the one potential outlier at -3, the residuals do appear to be normally distributed based on the linearity of the Quantile-Quantile plot.
+
+d. Use a residual plot to check visually whether the errors seem to have a zero mean and constant
+variance. [Plot the residuals against the predictor, include a horizontal line at zero.] Comment on
+any pattern or lack thereof, and what that would indicate.
+
+```{r}
+rsd_df = data.frame(fat$abdom, lm_fat$residuals)
+ggplot(data = rsd_df) + 
+  geom_point(mapping = aes(x = fat$abdom, y = lm_fat$residuals)) +
+  geom_hline(yintercept=0, linetype="solid", color = "red") +
+  labs(
+    title = "Residuals vs. Predictor",
+    x = "Abdomen Circumference, cm",
+    y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+There does not appear to be a pattern on this plot of the residuals versus the predictor.  The mean appears to be zero and the variance appears to be constant.  Given this plot, I wouldn't have good reason to suspect that the mean is not zero and the variance is not constant.
+
+e. Plot the residuals versus the fitted values, add a horizontal line at zero. Comment on the plot.
+
+```{r}
+fitted_vals <- lm_fat$fitted.values
+rsdvfit_df = data.frame(fitted_vals, lm_fat$residuals)
+ggplot(data = rsdvfit_df) + 
+  geom_point(mapping = aes(x = fitted_vals, y = lm_fat$residuals)) +
+  geom_hline(yintercept=0, linetype="solid", color = "purple") +
+  labs(
+    title = "Residuals vs. Fitted Values",
+    x = "Fitted Values",
+    y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+There does not appear to be a noticable pattern to this plot.  The points appear to be centered around zero and there does appear to be an even spread around the centerline.  From this plot I wouldn't have reason to suspect that the mean isn't zero and that the variance isn't constant.
+
+f. Check for serial correlation by plotting the residuals in order of occurrence in the sample. Include
+a horizontal line at zero. Comment on the plot.
+
+```{r}
+observations = c(1:length(lm_fat$residuals))
+serial_corrdf = data.frame(observations, lm_fat$residuals)
+ggplot(data = serial_corrdf) + 
+  #geom_point(mapping = aes(x = observations, y = lm_fat$residuals)) +
+  geom_line(mapping = aes(x = observations, y = lm_fat$residuals)) +
+  geom_hline(yintercept=0, linetype="solid", color = "blue") +
+  labs(
+    title = "Residuals vs. Observation Number",
+    x = "Observation Number",
+    y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+From this plot I don't see a distinct pattern in the residuals.  The plot appears to be random for the most part.  Given that there isn't a distinct pattern I wouldn't have reason to suspect that the mean isn't zero and the variance isn't constant.
+
+g. Now check for serial correlation using the Durbin-Watson test. Do the results agree with your
+impression from (f)?
+
+```{r}
+library(car)
+DW_test = durbinWatsonTest(lm_fat)
+DW_test
+
+```
+
+Yes, the results from the Durbin Watson test are consistent with my conclusion from part (f).  Given the p-value of #DW_test$p we would likely accept the null hypothesis that no serial correlation exists in the residuals.  However, since no value for alpha was set, we cannot definitively make a statement about the hypothesis.
+
+h. If the model is correct, there should be no relationship between the residuals and the predictor.
+Run the lm function on residuals with abdom as the predictor. Plot the residuals versus abdom and plot the fitted equation from this lm. Comment on what this plot indicates.
+
+```{r}
+lm_rsdpred = lm(lm_fat$residuals ~ fat$abdom)
+summary(lm_rsdpred)
+
+rsd_abdom_df <- data.frame(fat$abdom, lm_rsdpred$residuals)
+ggplot(data = rsd_abdom_df) + 
+  geom_point(mapping = aes(x = fat$abdom, y = lm_rsdpred$residuals)) +
+  geom_smooth(mapping = aes(x = fat$abdom, y = lm_rsdpred$residuals),method=lm, se = FALSE) +
+  labs(
+    title = "Residuals vs. Predictor",
+    x = "Predictor (abdom)",
+    y = "Residuals"
+  ) +
+ theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+Based on this plot there appears to be no relationship between the residuals and the predictor (abdom).  It is clear that the regression line is horizontal with a zero intercept.
+
+i. Check for outliers by plotting the residuals versus the observation number, with horizontal lines
+three standard deviations above and below the assumed mean of zero. What information does
+this graph tell you about this data?
+
+```{r}
+rsd_std_dev <- sd(lm_fat$residuals)
+lower <- -3*rsd_std_dev
+upper <- 3*rsd_std_dev
+observations = c(1:length(lm_fat$residuals))
+serial_corrdf = data.frame(observations, lm_fat$residuals)
+ggplot(data = serial_corrdf) + 
+  geom_point(mapping = aes(x = observations, y = lm_fat$residuals)) +
+# geom_line(mapping = aes(x = observations, y = lm_fat$residuals)) +
+  geom_hline(yintercept=lower, linetype="dashed", color = "red") +
+  geom_hline(yintercept=upper, linetype="dashed", color = "red") +
+  labs(
+    title = "Residuals vs. Observation Number",
+    x = "Observation Number",
+    y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+Given our criteria for outliers to be 3 times the standard error above and below the assumed mean of zero we can see that one outlier exists in this data set.
+
+j. Based on the above, would you feel pretty comfortable with the assumptions we are making for a
+linear regression analysis? Give some support for your answer. 
+
+Based on all of our analysis above I do feel comfortable with the assumptions we are making for the linear regression analysis.  We have plotted the data and reviewed it visually and it appears to have a linear relationship.  We have constructed a confidence interval to test a hypothesis that Beta-1 is zero, which also suggests a linear relationship exists.  We have constructed and visually assessed a normal QQ plot and found it to be linear which suggests that the residuals are distributed normally.  We have constructed and visually assessed 2 different residuals plots and determined that the residuals appear to have a mean of zero and constant variance.  We then checked for serial correlation by plotting and utilizing the Durbin Watson test and found that serial correlation of the residuals doesn't exist for this data.  Then we regressed the residuals upon the predictor and constructed a plot to assess if a relationship exists between the residuals and the predictor.  We also plotted the regression line for that regression and found it to have slope zero and intercept zero therefore indicating that no relationship exists.  Finally we evaluted for outliers to determine how many exist within our data set and found one.  Given what we know to this point about regression I think we have been diligent to complete all tests to validate our assumptions about this regression.  
+
+2. Observe the residual plots to the right. These are residual plots for four different data sets.
+
+
+a. Which plot(s) do you think exhibit non-constant variance? Give some justification.
+
+I think that plots 2, 3, and 4 exhibit non-constant variance.  Plot 1 appears to have constant variance because it looks as though all points are equally distributed above and below zero for the range of the predictor variable.  In plot 2 the points do appear evenly spread above and below zero, however, the variance appears to increase as the predictor increases.  In plot 3 the points appear evenly spread above and below zero, however, the variance appears to decrease as the predictor decreases.  In plot 4 the variance appears to be positive for the lower values of the predictor, negative for the middle values, and again positive for the higher values.
+
+b. Which plot(s) do you think indicate a poor choice for the model (lack of fit)? Give some justification.
+
+I think that plot 4 would be a poor choice for the model.  A linear model clearly would not fit all of the data presented in plot 4.  Plot's 2 and 3 both have linear relationships in the data even though the assumption of equal variance would not be met.
+
+3. Using the data from Problem 1 above:
+
+a. Redo the scatter plot, superimposing the fitted regression equation. Then add upper and lower confidence bounds to the plot in red, using 95% confidence. Comment on why these lines would be so close to the fitted regression equation.
+
+```{r}
+#Create a data frame called fat_data that includes abdom and brozek
+fat_df = select(fat, abdom, brozek)
+
+#Make a scatterplot of brozek versus abdom using ggplot2
+ggplot(data = fat_df) + 
+  geom_point(mapping = aes(x = abdom, y = brozek)) +
+  geom_smooth(mapping = aes(x = abdom, y = brozek),method=lm, level = 0.95) +
+  labs(
+    title = "Abdomen Circumference vs. % Body Fat",
+    x = "Abdomen Circumference, cm",
+    y = "% Body Fat Using Brozeks Equation"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```
+
+The equation for the confidence band includes a term for standard error.  Since the points are distributed close to the regression line the standard error is small for this regression.  Since the standard error is small the confidence bands calculated using that standard error will also be small and therefore close to the regression line.
+
+b. Interpret the slope of the equation obtained in (a) in terms of the wording of the problem.
+
+There appears to be a direct relationship between the abdomen circumference and the % body fat calculation using Brozek's equation.  As the abdomen circumference increases, the % body fact also increases at a rate given by the slope of the regression line.
+
+c. Now compute a 95% confidence interval for the mean of the sub-population of brozek values corresponding to an abdomen circumference of 110cm (i.e. x=110). Interpret your interval in terms of the wording of the problem.
+
+```{r}
+```{r}
+
+x=110
+n <- length(fat$abdom)
+b0 = lm_fat$coefficients[1]
+b1 = lm_fat$coefficients[2]
+sum = summary(lm_fat)
+t_sig <- qt(.975,n-2)*sum$sigma
+xbar <- mean(fat$abdom)
+sxx <- (n-1)*var(fat$abdom)
+lower = (b0+b1*x)-t_sig*sqrt((1/n)+((x-xbar)^2)/sxx)
+lower
+upper = (b0+b1*x)+t_sig*sqrt((1/n)+((x-xbar)^2)/sxx)
+upper
+pi_width = upper - lower
+pi_width
+
+```
+
+In the context of this problem the 95% confidence interval means that if we were to sample from the population many times we would be 95% confident or find that 95% of the time the mean of the sub-population of brozek values corresponding to an abdomen circumference of 110 cm would fall within this interval.
+
+d. Replot your confidence bound in (a), adding lower and upper 95% prediction bounds to the plot,
+using blue for the line color. Comment on the width of the prediction bounds, compared to the confidence bounds.
+
+```{r}
+#Use the predict function to get prediction band for the regression
+predict_bands = predict(lm_fat, interval="prediction")
+
+#Create a new data frame with fat and predict_band
+fat_predict_df = data.frame(fat, predict_bands)
+
+ggplot(data = fat_predict_df) + 
+  geom_point(mapping = aes(x = fat$abdom, y = fat$brozek)) +
+  geom_smooth(mapping = aes(x = fat$abdom, y = fat$brozek),method=lm, level = 0.95) +
+  geom_line(mapping = aes(x = fat$abdom, y=lwr), color = "blue", linetype = "dashed") +
+  geom_line(mapping = aes(x = fat$abdom, y=upr), color = "blue", linetype = "dashed") +
+  labs(
+    title = "Abdomen Circumference vs. % Body Fat",
+    x = "Abdomen Circumference, cm",
+    y = "% Body Fat Using Brozeks Equation"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+The prediction bounds are much wider than the confidence bounds.  This is to be expected because the prediction bounds account for 2 sources of variation whereas the confidence bounds only have one source of variation.
+
+e. Note that some of the points in the sample fall outside of the prediction bands. Why is that not
+unexpected?
+
+This is not unexpected because the prediction band is calculated at 95%.  Therefore we would expect that some points might fall outside of the prediction band.  To encompass more points in the sample within the prediction band we would need to increase the percentage that we using to calculate the prediction band.
+
+f. Should it be concerning that many of the sample points fall outside the confidence bands? Justify
+your answer.
+
+No this is not concerning.  The confidence band is for the regression equation or the mean of y given x and not for individual sample points.  Given this, it is not surprising that many individual sample points fall outside this band.
+
+g. Compute a 95% prediction interval for a man with abdomen circumference of 110cm. Interpret
+the interval in terms of the wording of the problem.
+
+```{r}
+
+x=110
+n <- length(fat$abdom)
+b0 = lm_fat$coefficients[1]
+b1 = lm_fat$coefficients[2]
+sum = summary(lm_fat)
+t_sig <- qt(.975,n-2)*sum$sigma
+xbar <- mean(fat$abdom)
+sxx <- (n-1)*var(fat$abdom)
+lower = (b0+b1*x)-t_sig*sqrt(1+(1/n)+((x-xbar)^2)/sxx)
+lower
+upper = (b0+b1*x)+t_sig*sqrt(1+(1/n)+((x-xbar)^2)/sxx)
+upper
+pi_width = upper - lower
+pi_width
+
+```
+
+In the context of this problem the 95% prediction interval means that if we were to sample from the population many times we would predict that 95% of the time the % body fat calculated using the Brozek equation for a man with an abdomen circumference of 110 cm would fall within this interval.
+
+h. Explain why the interval in (g) is much wider than the interval you computed in (c).
+
+The prediction band calculated in part (g) is wider than the confidence interval calculated in part (c) because it contains 2 sources of variation; the variation about the regression line and the variation in the sampling distributions for b0 and b1.  Whereas, the confidence interval only has one source of variation; the variation in the sampling distributions for b0 and b1.
+
+4. The following data was collected:
+𝑋1 2 2 3 2 3 2
+𝑋2 3 4 4 5 5 6
+𝑌  8 10 10 11 18 15
+
+```{r}
+Y = c(8,10,10,11,18,15)
+```
+
+a. State the model for the regression of 𝑌 on 𝑋1 and 𝑋2 using matrices.
+
+###do this in word###
+
+where, Y is the predictor matrix, X is the response matrix, beta is the parameter matrix, and epsilon
+is the error matrix
+
+b. Write the design matrix for the model in (a).
+
+```{r}
+X_1 = c(2,2,3,2,3,2)
+X_2 = c(3,4,4,5,5,6)
+#Create the design matrix for the predictor variable X
+X_deq = data.frame(1,X_1,X_2)
+X_deq = as.matrix(X_deq)
+X_deq
+```
+
+c. Specify, using symbols only (not actual numbers), the vectors 𝛽 and 𝜖.
+
+###Do this in word###
+
+d. Use R to compute 𝑏 using the approach shown in class.
+
+```{r}
+#Transpose the matrix X and multiply it on the left by Y
+
+t(X_deq) %*% Y
+#Transpose the matrix X and multiply it on the left by untransposed X
+
+t(X_deq) %*% X_deq
+#Calculate the parameter matrix
+
+Beta_hat = solve(t(X_deq) %*% X_deq) %*% (t(X_deq) %*% Y)
+Beta_hat
+```
+
+e. State the fitted model, based on the calculations in (d).
+
+$$ \hat{Y} = -7.273 + 3*X_1 + 2.728*X_2 $$
+
+f. Use the fitted model to predict the value of 𝑌 for 𝑋1 = 2.5 and 𝑋2 = 4.
+
+```{r}
+X1 = 2.5
+X2 = 4
+Y = Beta_hat[1] + Beta_hat[2]*X1 + Beta_hat[3]*X2
+Y
+```
+
+
+
+
+
+
+
+
+
+
+
+
